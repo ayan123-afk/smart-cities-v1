@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Sky } from '@react-three/drei';
 import * as THREE from 'three';
@@ -8,143 +8,280 @@ import * as THREE from 'three';
 // ============================================
 
 const FACILITIES = [
-  { id: 'overview', name: 'City Overview', icon: '🌆', position: [80, 60, 80], target: [0, 10, 0] },
-  { id: 'ai-control', name: 'AI Control Center', icon: '🤖', position: [20, 30, 40], target: [0, 10, 0] },
-  { id: 'hospital', name: 'Smart Hospital', icon: '🏥', position: [-30, 25, 30], target: [-15, 5, 5] },
-  { id: 'vertical-farm', name: 'Vertical Farm', icon: '🌱', position: [10, 20, 25], target: [10, 15, 0] },
-  { id: 'sewage', name: 'Sewage Treatment', icon: '💧', position: [35, 20, 25], target: [25, 5, 0] },
-  { id: 'solar', name: 'Solar Energy', icon: '☀️', position: [-20, 25, -20], target: [-25, 5, -15] },
-  { id: 'traffic', name: 'AI Traffic', icon: '🚦', position: [0, 20, 25], target: [0, 5, 0] },
-  { id: 'waste', name: 'Smart Waste', icon: '♻️', position: [45, 20, -20], target: [35, 5, -15] },
-  { id: 'transport', name: 'Public Transport', icon: '🚌', position: [-10, 20, -25], target: [0, 5, -20] },
-  { id: 'school', name: 'Smart School', icon: '🏫', position: [30, 20, -10], target: [20, 5, -10] },
-  { id: 'park', name: 'Green Park', icon: '🌳', position: [-25, 20, 15], target: [-15, 5, 10] },
-  { id: 'accessibility', name: 'Accessibility Zone', icon: '♿', position: [15, 15, 15], target: [10, 2, 5] },
+  { id: 'overview', name: 'Overview', icon: '🌆', position: [100, 80, 100], target: [0, 15, 0] },
+  { id: 'ai-control', name: 'AI Control', icon: '🤖', position: [15, 25, 35], target: [0, 12, 0] },
+  { id: 'hospital', name: 'Hospital', icon: '🏥', position: [-35, 20, 25], target: [-20, 8, 5] },
+  { id: 'farm', name: 'Vertical Farm', icon: '🌱', position: [25, 18, 20], target: [15, 12, 0] },
+  { id: 'sewage', name: 'Sewage Plant', icon: '💧', position: [45, 15, 15], target: [35, 5, 0] },
+  { id: 'solar', name: 'Solar Energy', icon: '☀️', position: [-25, 20, -25], target: [-30, 5, -20] },
+  { id: 'traffic', name: 'AI Traffic', icon: '🚦', position: [5, 18, 30], target: [0, 4, 0] },
+  { id: 'waste', name: 'Smart Waste', icon: '♻️', position: [55, 15, -15], target: [45, 4, -10] },
+  { id: 'school', name: 'School', icon: '🏫', position: [35, 15, -5], target: [25, 6, -5] },
+  { id: 'park', name: 'Green Park', icon: '🌳', position: [-30, 18, 10], target: [-20, 4, 5] },
+  { id: 'access', name: 'Accessibility', icon: '♿', position: [20, 12, 12], target: [12, 3, 6] },
 ];
 
 const FACILITY_INFO = {
   'ai-control': {
     name: 'AI City Control Center',
-    purpose: 'Central brain managing all city operations through AI algorithms',
-    sustainability: 'Optimizes resource usage across the entire city',
-    technology: 'AI algorithms, IoT sensors, Machine Learning, Neural Networks'
+    purpose: 'Central brain managing all city operations through real-time AI analysis',
+    sustainability: 'Optimizes energy, water, and waste across the entire city',
+    technology: 'AI algorithms, IoT sensors, Machine Learning, Neural Networks, Digital Twins',
+    status: 'ONLINE',
   },
   'hospital': {
     name: 'Smart Hospital',
-    purpose: 'Advanced healthcare facility with emergency response systems',
-    sustainability: 'Energy-efficient systems, medical waste reduction',
-    technology: 'AI diagnostics, telemedicine, smart patient monitoring'
+    purpose: 'Advanced healthcare facility with emergency response and telemedicine',
+    sustainability: 'Energy-efficient systems, medical waste reduction, green design',
+    technology: 'AI diagnostics, IoT patient monitoring, Autonomous ambulances',
+    status: 'ACTIVE',
   },
-  'vertical-farm': {
+  'farm': {
     name: 'Vertical Farming District',
-    purpose: 'Local food production in urban environment',
-    sustainability: '90% less water than traditional farming',
-    technology: 'Hydroponics, LED growth lighting, climate control systems'
+    purpose: 'Local food production in urban environment for food security',
+    sustainability: '90% less water, 95% less land, zero pesticides',
+    technology: 'Hydroponics, LED growth lighting, AI climate control, Robotic harvesting',
+    status: 'GROWING',
   },
   'sewage': {
     name: 'Sewage Treatment Plant',
-    purpose: 'Water recycling and waste management facility',
-    sustainability: 'Recycled water for irrigation and cooling',
-    technology: 'Membrane filtration, UV purification, smart sensors'
+    purpose: 'Water recycling and waste management for the entire city',
+    sustainability: 'Recycled water for irrigation and cooling, reduced freshwater demand',
+    technology: 'Membrane filtration, UV purification, AI process control',
+    status: 'RECYCLING',
   },
   'solar': {
     name: 'Solar Energy District',
-    purpose: 'Renewable energy generation for the entire city',
-    sustainability: 'Zero-emission power source',
-    technology: 'Photovoltaic cells, smart grid integration, battery storage'
+    purpose: 'Renewable energy generation for the entire city grid',
+    sustainability: 'Zero-emission power source, reduces carbon footprint by 60%',
+    technology: 'Photovoltaic cells, Smart grid, Battery storage, AI load balancing',
+    status: 'PRODUCING',
   },
   'traffic': {
     name: 'AI Traffic System',
-    purpose: 'Intelligent traffic management and optimization',
-    sustainability: 'Reduced idle time, lower emissions',
-    technology: 'Computer vision, predictive analytics, adaptive signaling'
+    purpose: 'Intelligent traffic management and flow optimization',
+    sustainability: 'Reduces emissions by 30% through optimized routing',
+    technology: 'Computer vision, predictive analytics, Adaptive signals, V2X communication',
+    status: 'OPTIMIZED',
   },
   'waste': {
     name: 'Smart Waste Management',
-    purpose: 'Automated waste collection and sorting',
-    sustainability: '95% waste diversion from landfill',
-    technology: 'Smart bins, AI sorting, route optimization'
-  },
-  'transport': {
-    name: 'Public Transportation Hub',
-    purpose: 'Efficient public transit system',
-    sustainability: 'Electric buses, reduced car usage',
-    technology: 'EV charging, smart scheduling, real-time tracking'
+    purpose: 'Automated waste collection, sorting, and recycling',
+    sustainability: '95% waste diversion from landfill, circular economy',
+    technology: 'Smart bins, AI sorting, Route optimization, Automated collection',
+    status: 'ACTIVE',
   },
   'school': {
     name: 'Smart School',
-    purpose: 'Modern education for future generations',
-    sustainability: 'Green roof, solar power, natural lighting',
-    technology: 'Smart classrooms, interactive learning, AI assistance'
+    purpose: 'Modern education for future generations with AI-assisted learning',
+    sustainability: 'Green roof, solar power, natural lighting, water recycling',
+    technology: 'Smart classrooms, Interactive learning, AI tutoring, Smart monitoring',
+    status: 'EDUCATING',
   },
   'park': {
     name: 'Green Park',
     purpose: 'Community recreation and biodiversity hub',
-    sustainability: 'Carbon capture, urban cooling',
-    technology: 'Smart irrigation, environmental monitoring'
+    sustainability: 'Carbon capture, urban cooling, habitat for biodiversity',
+    technology: 'Smart irrigation, Environmental monitoring, Smart lighting',
+    status: 'THRIVING',
   },
-  'accessibility': {
+  'access': {
     name: 'Accessibility Zone',
-    purpose: 'Inclusive public spaces for all abilities',
-    sustainability: 'Universal design principles',
-    technology: 'Assistive technologies, smart navigation'
-  }
+    purpose: 'Inclusive public spaces designed for all abilities',
+    sustainability: 'Universal design, reduced barriers, inclusive infrastructure',
+    technology: 'Assistive technologies, Smart navigation, Audio guidance',
+    status: 'ACCESSIBLE',
+  },
 };
 
 // ============================================
-// SIMPLE 3D COMPONENTS
+// ADVANCED PROCEDURAL GEOMETRY COMPONENTS
 // ============================================
 
-function Box({ position, args = [1, 1, 1], color = '#888888', rotation = [0, 0, 0] }) {
+function AdvancedBuilding({ position, width = 5, height = 10, depth = 5, color = '#8a8a8a', glassRatio = 0.4 }) {
+  const [w, h, d] = [width, height, depth];
+  
   return (
-    <mesh position={position} rotation={rotation} castShadow receiveShadow>
-      <boxGeometry args={args} />
-      <meshStandardMaterial color={color} />
-    </mesh>
+    <group position={position}>
+      {/* Main building body */}
+      <mesh position={[0, h / 2, 0]} castShadow>
+        <boxGeometry args={[w, h, d]} />
+        <meshStandardMaterial color={color} roughness={0.6} metalness={0.3} />
+      </mesh>
+      
+      {/* Glass facade sections */}
+      {[-1, 0, 1].map((faceIndex) => (
+        <mesh key={faceIndex} position={[0, h / 2, faceIndex * (d / 2 + 0.01)]}>
+          <boxGeometry args={[w * 0.9, h * glassRatio, 0.05]} />
+          <meshStandardMaterial 
+            color="#88ccff" 
+            transparent 
+            opacity={0.6} 
+            emissive="#4488aa"
+            emissiveIntensity={0.2}
+          />
+        </mesh>
+      ))}
+      
+      {/* Windows pattern */}
+      {Array.from({ length: Math.floor(h / 2) }).map((_, floor) => (
+        <group key={floor} position={[0, 1 + floor * 2, d / 2 + 0.02]}>
+          {[-1, 1].map((windowPos) => (
+            <mesh key={windowPos} position={[windowPos * (w / 4), 0, 0]}>
+              <boxGeometry args={[1.2, 0.8, 0.05]} />
+              <meshStandardMaterial color="#aaddff" emissive="#4488aa" emissiveIntensity={0.4} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      
+      {/* Roof structure */}
+      <mesh position={[0, h + 0.3, 0]} castShadow>
+        <boxGeometry args={[w * 0.8, 0.4, d * 0.8]} />
+        <meshStandardMaterial color="#666666" />
+      </mesh>
+      
+      {/* Roof equipment */}
+      {Math.random() > 0.5 && (
+        <mesh position={[w * 0.2, h + 0.8, 0]}>
+          <cylinderGeometry args={[0.5, 0.5, 1, 8]} />
+          <meshStandardMaterial color="#999999" />
+        </mesh>
+      )}
+    </group>
   );
 }
 
-function Sphere({ position, args = [0.5, 16, 16], color = '#ff4444', emissive = null, emissiveIntensity = 0 }) {
+function Skyscraper({ position, height = 20 }) {
   return (
-    <mesh position={position} castShadow>
-      <sphereGeometry args={args} />
-      <meshStandardMaterial 
-        color={color} 
-        emissive={emissive || color} 
-        emissiveIntensity={emissiveIntensity}
-      />
-    </mesh>
+    <group position={position}>
+      {/* Main tower */}
+      <mesh position={[0, height / 2, 0]} castShadow>
+        <boxGeometry args={[6, height, 6]} />
+        <meshStandardMaterial color="#9aa8b8" roughness={0.4} metalness={0.5} />
+      </mesh>
+      
+      {/* Glass sections */}
+      {[0, 2, 4].map((offset) => (
+        <mesh key={offset} position={[0, height * 0.3 + offset, 3.01]}>
+          <boxGeometry args={[5, height * 0.2, 0.05]} />
+          <meshStandardMaterial 
+            color="#66aadd" 
+            transparent 
+            opacity={0.5} 
+            emissive="#4488aa"
+            emissiveIntensity={0.3}
+          />
+        </mesh>
+      ))}
+      
+      {/* Tapered top */}
+      <mesh position={[0, height + 1, 0]}>
+        <coneGeometry args={[3.5, 4, 4]} />
+        <meshStandardMaterial color="#7788aa" />
+      </mesh>
+      
+      {/* Antenna */}
+      <mesh position={[0, height + 5, 0]}>
+        <cylinderGeometry args={[0.2, 0.2, 6, 8]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      
+      {/* Red beacon */}
+      <mesh position={[0, height + 8, 0]}>
+        <sphereGeometry args={[0.3, 8, 8]} />
+        <meshStandardMaterial color="#ff4444" emissive="#ff0000" emissiveIntensity={0.8} />
+      </mesh>
+    </group>
   );
 }
 
-function Cylinder({ position, args = [0.5, 0.5, 1, 16], color = '#888888', rotation = [0, 0, 0] }) {
+function GlassTower({ position, height = 15 }) {
   return (
-    <mesh position={position} rotation={rotation} castShadow>
-      <cylinderGeometry args={args} />
-      <meshStandardMaterial color={color} />
-    </mesh>
+    <group position={position}>
+      {/* Glass body */}
+      <mesh position={[0, height / 2, 0]} castShadow>
+        <boxGeometry args={[5, height, 5]} />
+        <meshStandardMaterial 
+          color="#88aadd" 
+          transparent 
+          opacity={0.7} 
+          metalness={0.8}
+          roughness={0.2}
+        />
+      </mesh>
+      
+      {/* Interior structure */}
+      {Array.from({ length: Math.floor(height / 3) }).map((_, i) => (
+        <mesh key={i} position={[0, 1.5 + i * 3, 0]}>
+          <boxGeometry args={[5.1, 0.2, 5.1]} />
+          <meshStandardMaterial color="#556677" />
+        </mesh>
+      ))}
+      
+      {/* Reflective surface */}
+      <mesh position={[0, height / 2, 2.51]}>
+        <planeGeometry args={[5, height]} />
+        <meshStandardMaterial 
+          color="#aaccff" 
+          metalness={0.9} 
+          roughness={0.1}
+        />
+      </mesh>
+    </group>
   );
 }
 
-function Cone({ position, args = [0.5, 1, 16], color = '#888888' }) {
+function ResidentialBuilding({ position, floors = 8 }) {
+  const buildingColor = Math.random() > 0.5 ? '#c8b8a8' : '#a8b8c8';
+  
   return (
-    <mesh position={position} castShadow>
-      <coneGeometry args={args} />
-      <meshStandardMaterial color={color} />
-    </mesh>
+    <group position={position}>
+      {/* Body */}
+      <mesh position={[0, floors * 2, 0]} castShadow>
+        <boxGeometry args={[7, floors * 2, 7]} />
+        <meshStandardMaterial color={buildingColor} roughness={0.8} />
+      </mesh>
+      
+      {/* Balconies */}
+      {Array.from({ length: floors }).map((_, floor) => (
+        <group key={floor} position={[0, 1 + floor * 2, 3.6]}>
+          <mesh>
+            <boxGeometry args={[6, 0.3, 0.8]} />
+            <meshStandardMaterial color="#dddddd" />
+          </mesh>
+          {/* Railing */}
+          <mesh position={[0, 0.5, 0]}>
+            <boxGeometry args={[5.8, 0.2, 0.1]} />
+            <meshStandardMaterial color="#999999" />
+          </mesh>
+        </group>
+      ))}
+      
+      {/* Roof */}
+      <mesh position={[0, floors * 2 + 0.3, 0]}>
+        <boxGeometry args={[7.2, 0.4, 7.2]} />
+        <meshStandardMaterial color="#887766" />
+      </mesh>
+    </group>
   );
 }
-
-// ============================================
-// TREE COMPONENT
-// ============================================
 
 function Tree({ position, scale = 1 }) {
   return (
     <group position={position} scale={scale}>
-      <Cylinder position={[0, 1, 0]} args={[0.3, 0.4, 2, 8]} color="#8B4513" />
-      <Sphere position={[0, 2.5, 0]} args={[1.2, 8, 8]} color="#228B22" />
-      <Sphere position={[0.5, 2.8, 0.3]} args={[0.8, 8, 8]} color="#2E8B57" />
+      <mesh position={[0, 1, 0]}>
+        <cylinderGeometry args={[0.3, 0.4, 2, 8]} />
+        <meshStandardMaterial color="#8B4513" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 2.8, 0]}>
+        <sphereGeometry args={[1.4, 8, 8]} />
+        <meshStandardMaterial color="#228B22" roughness={0.8} />
+      </mesh>
+      <mesh position={[0.4, 3.2, 0.3]}>
+        <sphereGeometry args={[0.9, 8, 8]} />
+        <meshStandardMaterial color="#2E8B57" roughness={0.8} />
+      </mesh>
     </group>
   );
 }
@@ -152,9 +289,18 @@ function Tree({ position, scale = 1 }) {
 function PineTree({ position, scale = 1 }) {
   return (
     <group position={position} scale={scale}>
-      <Cylinder position={[0, 1, 0]} args={[0.2, 0.3, 2, 8]} color="#5C4033" />
-      <Cone position={[0, 2, 0]} args={[1, 2, 8]} color="#006400" />
-      <Cone position={[0, 3.5, 0]} args={[0.8, 2, 8]} color="#008000" />
+      <mesh position={[0, 1, 0]}>
+        <cylinderGeometry args={[0.2, 0.3, 2, 8]} />
+        <meshStandardMaterial color="#5C4033" />
+      </mesh>
+      <mesh position={[0, 2.5, 0]}>
+        <coneGeometry args={[1.2, 2.5, 8]} />
+        <meshStandardMaterial color="#006400" />
+      </mesh>
+      <mesh position={[0, 4, 0]}>
+        <coneGeometry args={[0.8, 2, 8]} />
+        <meshStandardMaterial color="#008000" />
+      </mesh>
     </group>
   );
 }
@@ -172,20 +318,36 @@ function Car({ position, direction = [1, 0, 0], speed = 0.1, color = '#ff4444' }
     ref.current.position.z += direction[2] * speed * delta;
     
     // Wrap around
-    if (ref.current.position.x > 60) ref.current.position.x = -60;
-    if (ref.current.position.x < -60) ref.current.position.x = 60;
-    if (ref.current.position.z > 60) ref.current.position.z = -60;
-    if (ref.current.position.z < -60) ref.current.position.z = 60;
+    if (ref.current.position.x > 80) ref.current.position.x = -80;
+    if (ref.current.position.x < -80) ref.current.position.x = 80;
+    if (ref.current.position.z > 80) ref.current.position.z = -80;
+    if (ref.current.position.z < -80) ref.current.position.z = 80;
   });
   
   return (
     <group ref={ref} position={position}>
-      <Box position={[0, 0.3, 0]} args={[2, 0.6, 1.2]} color={color} />
-      <Box position={[0, 0.8, 0]} args={[1.2, 0.6, 1]} color="#333333" />
-      <Sphere position={[-0.8, -0.1, 0.7]} args={[0.2, 8, 8]} color="#222222" />
-      <Sphere position={[-0.8, -0.1, -0.7]} args={[0.2, 8, 8]} color="#222222" />
-      <Sphere position={[0.8, -0.1, 0.7]} args={[0.2, 8, 8]} color="#222222" />
-      <Sphere position={[0.8, -0.1, -0.7]} args={[0.2, 8, 8]} color="#222222" />
+      {/* Body */}
+      <mesh position={[0, 0.4, 0]}>
+        <boxGeometry args={[2.2, 0.5, 1.2]} />
+        <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
+      </mesh>
+      {/* Cabin */}
+      <mesh position={[0, 1, 0]}>
+        <boxGeometry args={[1.4, 0.6, 1]} />
+        <meshStandardMaterial color="#333333" />
+      </mesh>
+      {/* Wheels */}
+      {[[-0.8, 0, 0.7], [-0.8, 0, -0.7], [0.8, 0, 0.7], [0.8, 0, -0.7]].map((pos, i) => (
+        <mesh key={i} position={pos}>
+          <cylinderGeometry args={[0.2, 0.2, 0.1, 8]} />
+          <meshStandardMaterial color="#222222" />
+        </mesh>
+      ))}
+      {/* Headlights */}
+      <mesh position={[1.1, 0.4, 0.4]}>
+        <boxGeometry args={[0.1, 0.2, 0.2]} />
+        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
+      </mesh>
     </group>
   );
 }
@@ -198,17 +360,31 @@ function Bus({ position, direction = [1, 0, 0], speed = 0.08 }) {
     ref.current.position.x += direction[0] * speed * delta;
     ref.current.position.z += direction[2] * speed * delta;
     
-    if (ref.current.position.x > 60) ref.current.position.x = -60;
-    if (ref.current.position.x < -60) ref.current.position.x = 60;
-    if (ref.current.position.z > 60) ref.current.position.z = -60;
-    if (ref.current.position.z < -60) ref.current.position.z = 60;
+    if (ref.current.position.x > 80) ref.current.position.x = -80;
+    if (ref.current.position.x < -80) ref.current.position.x = 80;
+    if (ref.current.position.z > 80) ref.current.position.z = -80;
+    if (ref.current.position.z < -80) ref.current.position.z = 80;
   });
   
   return (
     <group ref={ref} position={position}>
-      <Box position={[0, 1, 0]} args={[6, 2, 2.5]} color="#00aa44" />
-      <Box position={[0, 2.2, 0]} args={[5, 1, 2]} color="#88ff88" transparent opacity={0.6} />
-      <Box position={[-2.5, 0.5, 0]} args={[1, 1, 2]} color="#006633" />
+      <mesh position={[0, 1.2, 0]}>
+        <boxGeometry args={[6, 2.2, 2.5]} />
+        <meshStandardMaterial color="#00aa44" />
+      </mesh>
+      <mesh position={[0, 2.8, 0]}>
+        <boxGeometry args={[5.5, 1, 2.3]} />
+        <meshStandardMaterial color="#88ff88" transparent opacity={0.6} />
+      </mesh>
+      <mesh position={[-2.8, 0.5, 0]}>
+        <boxGeometry args={[1, 1, 2.2]} />
+        <meshStandardMaterial color="#006633" />
+      </mesh>
+      {/* Route display */}
+      <mesh position={[0, 3.2, 2.5]}>
+        <boxGeometry args={[1, 0.4, 0.1]} />
+        <meshStandardMaterial color="#00ff00" emissive="#00ff00" emissiveIntensity={0.5} />
+      </mesh>
     </group>
   );
 }
@@ -235,14 +411,27 @@ function Ambulance({ position, target, speed = 0.3 }) {
   
   return (
     <group ref={ref} position={position}>
-      <Box position={[0, 0.75, 0]} args={[3, 1.5, 1.5]} color="#ffffff" />
-      <Box position={[0, 1.8, 0]} args={[2, 0.8, 1.3]} color="#ffffff" />
-      <Box position={[-1.2, 1.8, 0]} args={[0.5, 0.5, 1]} color="#ff2222" />
-      <Box position={[-1.5, 1.5, 0]} args={[0.3, 0.3, 1]} color="#ff2222" />
-      <Sphere position={[-0.8, -0.1, 0.8]} args={[0.2, 8, 8]} color="#222222" />
-      <Sphere position={[-0.8, -0.1, -0.8]} args={[0.2, 8, 8]} color="#222222" />
-      <Sphere position={[0.8, -0.1, 0.8]} args={[0.2, 8, 8]} color="#222222" />
-      <Sphere position={[0.8, -0.1, -0.8]} args={[0.2, 8, 8]} color="#222222" />
+      <mesh position={[0, 0.75, 0]}>
+        <boxGeometry args={[3, 1.5, 1.5]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[0, 1.8, 0]}>
+        <boxGeometry args={[2, 0.8, 1.3]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[-1.2, 1.8, 0]}>
+        <boxGeometry args={[0.5, 0.5, 1]} />
+        <meshStandardMaterial color="#ff2222" />
+      </mesh>
+      <mesh position={[-1.5, 1.5, 0]}>
+        <boxGeometry args={[0.3, 0.3, 1]} />
+        <meshStandardMaterial color="#ff2222" />
+      </mesh>
+      {/* Emergency light */}
+      <mesh position={[0, 2.2, 0]}>
+        <boxGeometry args={[1, 0.3, 0.3]} />
+        <meshStandardMaterial color="#ff4444" emissive="#ff0000" emissiveIntensity={1} />
+      </mesh>
     </group>
   );
 }
@@ -258,7 +447,7 @@ function TrafficLight({ position, rotation = 0 }) {
     if (!lightsRef.current) return;
     
     const time = clock.getElapsedTime();
-    const phase = Math.floor(time / 3) % 3;
+    const phase = Math.floor(time / 4) % 3;
     
     const colors = [
       ['#ff0000', '#333333', '#333333'],
@@ -273,332 +462,1023 @@ function TrafficLight({ position, rotation = 0 }) {
   
   return (
     <group position={position} rotation={[0, rotation, 0]}>
-      <Cylinder position={[0, 2, 0]} args={[0.1, 0.15, 4, 8]} color="#555555" />
-      <Box position={[0, 4, 0]} args={[0.4, 1.2, 0.4]} color="#222222" />
+      <mesh position={[0, 2, 0]}>
+        <cylinderGeometry args={[0.15, 0.2, 4, 8]} />
+        <meshStandardMaterial color="#555555" />
+      </mesh>
+      <mesh position={[0, 4.2, 0]}>
+        <boxGeometry args={[0.5, 1.5, 0.5]} />
+        <meshStandardMaterial color="#222222" />
+      </mesh>
       <group ref={lightsRef}>
-        <Sphere position={[0, 4.4, 0.3]} args={[0.2, 8, 8]} color="#ff0000" />
-        <Sphere position={[0, 4, 0.3]} args={[0.2, 8, 8]} color="#ffaa00" />
-        <Sphere position={[0, 3.6, 0.3]} args={[0.2, 8, 8]} color="#00ff00" />
+        {[4.8, 4.2, 3.6].map((y, i) => (
+          <mesh key={i} position={[0, y, 0.3]}>
+            <sphereGeometry args={[0.25, 8, 8]} />
+            <meshStandardMaterial color="#333333" />
+          </mesh>
+        ))}
       </group>
     </group>
   );
 }
 
 // ============================================
-// CITY FACILITY COMPONENTS
+// SMART STREETLIGHT
 // ============================================
 
-function AI_ControlCenter() {
+function SmartStreetlight({ position, rotation = 0 }) {
+  const lightRef = useRef();
+  
+  useFrame((state) => {
+    if (!lightRef.current) return;
+    
+    // Subtle pulsing
+    lightRef.current.material.emissiveIntensity = 
+      0.5 + Math.sin(state.clock.elapsedTime * 2) * 0.2;
+  });
+  
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      <mesh position={[0, 3, 0]}>
+        <cylinderGeometry args={[0.1, 0.15, 6, 8]} />
+        <meshStandardMaterial color="#555555" />
+      </mesh>
+      <mesh position={[0.5, 6, 0]}>
+        <boxGeometry args={[1, 0.2, 0.2]} />
+        <meshStandardMaterial color="#555555" />
+      </mesh>
+      <mesh ref={lightRef} position={[0.9, 5.8, 0]}>
+        <sphereGeometry args={[0.2, 8, 8]} />
+        <meshStandardMaterial 
+          color="#ffdd55" 
+          emissive="#ffaa00" 
+          emissiveIntensity={0.8}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+// ============================================
+// AI CONTROL CENTER
+// ============================================
+
+function AIControlCenter() {
+  const dataLinesRef = useRef([]);
+  
+  useFrame((state) => {
+    // Animate data connections
+    dataLinesRef.current.forEach((line, i) => {
+      if (line) {
+        line.rotation.y = state.clock.elapsedTime * (0.5 + i * 0.1);
+      }
+    });
+  });
+  
   return (
     <group position={[0, 0, 0]}>
-      <Box position={[0, 8, 0]} args={[12, 16, 12]} color="#1a2a3a" />
-      <Box position={[0, 8, 6.01]} args={[10, 14, 0.1]} color="#00aaff" transparent opacity={0.5} />
-      <Cylinder position={[0, 16, 0]} args={[3, 4, 6, 16]} color="#00ccff" />
-      <Cylinder position={[0, 22, 0]} args={[0.2, 0.2, 6, 8]} color="#ffffff" />
-      <Sphere position={[0, 25, 0]} args={[0.6, 12, 12]} color="#ff4444" emissive="#ff0000" emissiveIntensity={0.8} />
-      <Box position={[-9, 4, 0]} args={[4, 8, 8]} color="#2a3a4a" />
-      <Box position={[9, 4, 0]} args={[4, 8, 8]} color="#2a3a4a" />
-      <Box position={[0, -0.25, 0]} args={[18, 0.5, 18]} color="#333333" />
+      {/* Main building */}
+      <mesh position={[0, 10, 0]} castShadow>
+        <boxGeometry args={[14, 20, 14]} />
+        <meshStandardMaterial color="#1a2a4a" metalness={0.6} roughness={0.3} />
+      </mesh>
+      
+      {/* Glass facade */}
+      <mesh position={[0, 10, 7.01]}>
+        <boxGeometry args={[12, 18, 0.1]} />
+        <meshStandardMaterial 
+          color="#00aaff" 
+          transparent 
+          opacity={0.4} 
+          emissive="#0066aa"
+          emissiveIntensity={0.3}
+        />
+      </mesh>
+      
+      {/* Central tower */}
+      <mesh position={[0, 22, 0]}>
+        <cylinderGeometry args={[3, 4, 8, 16]} />
+        <meshStandardMaterial color="#00ccff" emissive="#00aaff" emissiveIntensity={0.5} />
+      </mesh>
+      
+      {/* Antenna */}
+      <mesh position={[0, 28, 0]}>
+        <cylinderGeometry args={[0.3, 0.3, 8, 8]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[0, 32, 0]}>
+        <sphereGeometry args={[0.8, 8, 8]} />
+        <meshStandardMaterial color="#ff4444" emissive="#ff0000" emissiveIntensity={0.8} />
+      </mesh>
+      
+      {/* Side wings */}
+      <mesh position={[-10, 6, 0]}>
+        <boxGeometry args={[5, 12, 8]} />
+        <meshStandardMaterial color="#2a3a5a" />
+      </mesh>
+      <mesh position={[10, 6, 0]}>
+        <boxGeometry args={[5, 12, 8]} />
+        <meshStandardMaterial color="#2a3a5a" />
+      </mesh>
+      
+      {/* Base platform */}
+      <mesh position={[0, -0.5, 0]}>
+        <boxGeometry args={[22, 1, 22]} />
+        <meshStandardMaterial color="#333344" />
+      </mesh>
+      
+      {/* Holographic displays */}
+      {[0, 2, 4, 6].map((i) => (
+        <mesh key={i} position={[0, 14 + i, 0]}>
+          <cylinderGeometry args={[2 - i * 0.3, 2 - i * 0.3, 0.05, 16]} />
+          <meshStandardMaterial 
+            color="#00ff88" 
+            transparent 
+            opacity={0.2} 
+            emissive="#00ff88"
+            emissiveIntensity={0.5}
+          />
+        </mesh>
+      ))}
+      
+      {/* Animated data connection rings */}
+      {[0, 1, 2, 3].map((i) => (
+        <mesh 
+          key={i} 
+          ref={(el) => (dataLinesRef.current[i] = el)} 
+          position={[0, 5 + i * 3, 0]}
+        >
+          <torusGeometry args={[10, 0.1, 8, 32]} />
+          <meshStandardMaterial 
+            color="#00aaff" 
+            transparent 
+            opacity={0.5} 
+            emissive="#00aaff"
+            emissiveIntensity={0.3}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }
 
-function Hospital() {
+// ============================================
+// SMART HOSPITAL
+// ============================================
+
+function SmartHospital() {
   return (
-    <group position={[-15, 0, 5]}>
-      <Box position={[0, 8, 0]} args={[10, 16, 8]} color="#e8e8e8" />
-      <Box position={[0, 4, 4]} args={[8, 8, 0.1]} color="#ffffff" transparent opacity={0.7} />
-      <Box position={[-4, 2, 4]} args={[3, 4, 2]} color="#ffffff" />
-      <Box position={[-4, 4, 5]} args={[3, 0.5, 0.5]} color="#ff4444" />
-      <Box position={[2, 1, 5]} args={[4, 2, 3]} color="#ffdddd" />
-      <Box position={[2, 2.5, 5]} args={[4, 0.3, 3]} color="#ff4444" />
-      <Box position={[3, 16.5, -1]} args={[3, 1, 3]} color="#999999" />
-      <Cylinder position={[-3, 16.5, -2]} args={[1, 1, 2, 8]} color="#aaaaaa" />
-      <Sphere position={[0, 16.5, 0]} args={[3, 8, 8]} color="#66aa66" />
-      <Box position={[0, 16.7, 0]} args={[5, 0.1, 1]} color="#ffffff" />
-      <Box position={[0, 10, 4.1]} args={[6, 1, 0.1]} color="#ff4444" />
+    <group position={[-20, 0, 5]}>
+      {/* Main hospital building */}
+      <mesh position={[0, 10, 0]} castShadow>
+        <boxGeometry args={[14, 20, 10]} />
+        <meshStandardMaterial color="#e8e8e8" roughness={0.4} />
+      </mesh>
       
+      {/* Glass sections */}
+      <mesh position={[0, 5, 5.01]}>
+        <boxGeometry args={[10, 8, 0.1]} />
+        <meshStandardMaterial color="#88ccff" transparent opacity={0.5} />
+      </mesh>
+      <mesh position={[0, 14, 5.01]}>
+        <boxGeometry args={[10, 8, 0.1]} />
+        <meshStandardMaterial color="#88ccff" transparent opacity={0.5} />
+      </mesh>
+      
+      {/* Emergency entrance */}
+      <mesh position={[-5, 2, 5]}>
+        <boxGeometry args={[4, 4, 2]} />
+        <meshStandardMaterial color="#ffdddd" />
+      </mesh>
+      <mesh position={[-5, 4.5, 5]}>
+        <boxGeometry args={[4, 0.5, 0.5]} />
+        <meshStandardMaterial color="#ff4444" emissive="#ff0000" emissiveIntensity={0.5} />
+      </mesh>
+      
+      {/* Ambulance bay */}
+      <mesh position={[2, 1, 5]}>
+        <boxGeometry args={[5, 2, 3]} />
+        <meshStandardMaterial color="#ffdddd" />
+      </mesh>
+      <mesh position={[2, 2.5, 5]}>
+        <boxGeometry args={[5, 0.4, 3]} />
+        <meshStandardMaterial color="#ff4444" />
+      </mesh>
+      
+      {/* Rooftop equipment */}
+      <mesh position={[4, 20, -2]}>
+        <boxGeometry args={[3, 1, 3]} />
+        <meshStandardMaterial color="#999999" />
+      </mesh>
+      <mesh position={[-3, 20, 2]}>
+        <cylinderGeometry args={[1, 1, 2, 8]} />
+        <meshStandardMaterial color="#aaaaaa" />
+      </mesh>
+      
+      {/* Helipad */}
+      <mesh position={[0, 20.5, 0]}>
+        <cylinderGeometry args={[4, 4, 0.3, 16]} />
+        <meshStandardMaterial color="#66aa66" />
+      </mesh>
+      <mesh position={[0, 20.7, 0]}>
+        <boxGeometry args={[6, 0.1, 1]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      
+      {/* Signage */}
+      <mesh position={[0, 12, 5.1]}>
+        <boxGeometry args={[8, 1.2, 0.1]} />
+        <meshStandardMaterial color="#ff4444" emissive="#ff0000" emissiveIntensity={0.3} />
+      </mesh>
+      
+      {/* Animated ambulance */}
       <Ambulance position={[5, 0, -10]} target={[2, 0, 3]} speed={0.4} />
       
-      <Tree position={[6, 0, 3]} scale={0.8} />
-      <Tree position={[-7, 0, 3]} scale={0.9} />
+      {/* Landscaping */}
+      <Tree position={[8, 0, 4]} scale={0.8} />
+      <Tree position={[-9, 0, 4]} scale={0.9} />
+      
+      {/* Accessible ramp */}
+      <mesh position={[5, 0.2, 5]}>
+        <boxGeometry args={[3, 0.4, 2]} />
+        <meshStandardMaterial color="#88ccff" />
+      </mesh>
     </group>
   );
 }
 
+// ============================================
+// VERTICAL FARM
+// ============================================
+
 function VerticalFarm() {
+  const waterRef = useRef();
+  const growLightsRef = useRef([]);
+  
+  useFrame((state) => {
+    // Animate water circulation
+    if (waterRef.current) {
+      waterRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.3;
+    }
+    
+    // Animate growing lights
+    growLightsRef.current.forEach((light, i) => {
+      if (light) {
+        light.material.emissiveIntensity = 
+          0.3 + Math.sin(state.clock.elapsedTime + i) * 0.2;
+      }
+    });
+  });
+  
   return (
-    <group position={[10, 0, 0]}>
-      <Box position={[0, 10, 0]} args={[8, 20, 6]} color="#2d5a27" />
+    <group position={[15, 0, 0]}>
+      {/* Main farm building */}
+      <mesh position={[0, 12, 0]} castShadow>
+        <boxGeometry args={[10, 24, 8]} />
+        <meshStandardMaterial color="#2d5a27" roughness={0.7} />
+      </mesh>
       
-      {[2, 5, 8, 11, 14, 17].map((y) => (
+      {/* Farming floors */}
+      {[2, 5, 8, 11, 14, 17, 20].map((y, i) => (
         <group key={y}>
-          <Box position={[0, y, 0]} args={[8, 0.2, 6]} color="#1a3a15" />
-          <Box position={[0, y + 0.2, 0]} args={[7, 0.3, 5]} color="#44aa33" />
+          {/* Floor platform */}
+          <mesh position={[0, y, 0]}>
+            <boxGeometry args={[10, 0.2, 8]} />
+            <meshStandardMaterial color="#1a3a15" />
+          </mesh>
+          
+          {/* Plants */}
+          <mesh position={[0, y + 0.3, 0]}>
+            <boxGeometry args={[9, 0.4, 7]} />
+            <meshStandardMaterial 
+              color="#44aa33" 
+              emissive="#228822" 
+              emissiveIntensity={0.3}
+            />
+          </mesh>
+          
+          {/* Growing lights */}
+          <mesh 
+            ref={(el) => (growLightsRef.current[i] = el)} 
+            position={[0, y + 0.8, 0]}
+          >
+            <boxGeometry args={[9, 0.1, 7]} />
+            <meshStandardMaterial 
+              color="#ff88cc" 
+              emissive="#ff66aa" 
+              emissiveIntensity={0.5}
+            />
+          </mesh>
         </group>
       ))}
       
-      <Cylinder position={[-4.5, 10, 0]} args={[0.2, 0.2, 20, 8]} color="#00aaff" />
-      <Cylinder position={[4.5, 10, 0]} args={[0.2, 0.2, 20, 8]} color="#00aaff" />
+      {/* Water pipes */}
+      <mesh position={[-5.5, 12, 0]}>
+        <cylinderGeometry args={[0.3, 0.3, 24, 8]} />
+        <meshStandardMaterial color="#00aaff" />
+      </mesh>
+      <mesh position={[5.5, 12, 0]}>
+        <cylinderGeometry args={[0.3, 0.3, 24, 8]} />
+        <meshStandardMaterial color="#00aaff" />
+      </mesh>
       
-      <Box position={[0, 20, 0]} args={[8, 0.3, 6]} color="#003366" />
-      <Box position={[0, 20, 0]} args={[8, 0.1, 6]} color="#66aaff" transparent opacity={0.6} />
-      <Box position={[5, 8, 0]} args={[2, 0.5, 5]} color="#44aa33" />
-      <Box position={[5, 12, 0]} args={[2, 0.5, 5]} color="#44aa33" />
+      {/* Animated water */}
+      <group ref={waterRef}>
+        <mesh position={[0, 8, 0]}>
+          <boxGeometry args={[1, 0.3, 0.5]} />
+          <meshStandardMaterial color="#00ffff" transparent opacity={0.7} />
+        </mesh>
+      </group>
+      
+      {/* Rooftop solar panels */}
+      <mesh position={[0, 24, 0]}>
+        <boxGeometry args={[10, 0.3, 8]} />
+        <meshStandardMaterial color="#003366" />
+      </mesh>
+      <mesh position={[0, 24.2, 0]}>
+        <boxGeometry args={[9.5, 0.1, 7.5]} />
+        <meshStandardMaterial color="#66aaff" transparent opacity={0.6} />
+      </mesh>
+      
+      {/* Green terraces */}
+      <mesh position={[6, 8, 0]}>
+        <boxGeometry args={[2, 0.5, 6]} />
+        <meshStandardMaterial color="#44aa33" />
+      </mesh>
+      <mesh position={[6, 14, 0]}>
+        <boxGeometry args={[2, 0.5, 6]} />
+        <meshStandardMaterial color="#44aa33" />
+      </mesh>
     </group>
   );
 }
 
-function SewageTreatment() {
-  return (
-    <group position={[25, 0, 0]}>
-      <Cylinder position={[-5, 2, 0]} args={[3, 3, 4, 16]} color="#555555" />
-      <Cylinder position={[0, 2, 0]} args={[3, 3, 4, 16]} color="#555555" />
-      <Cylinder position={[5, 2, 0]} args={[3, 3, 4, 16]} color="#555555" />
-      
-      <Box position={[-5, 5, 0]} args={[2, 2, 2]} color="#888888" />
-      <Box position={[0, 5, 0]} args={[2, 2, 2]} color="#888888" />
-      <Box position={[5, 5, 0]} args={[2, 2, 2]} color="#888888" />
-      
-      <Cylinder position={[-2.5, 2, 0]} args={[0.3, 0.3, 5, 8]} rotation={[0, 0, Math.PI / 2]} color="#00aaff" />
-      <Cylinder position={[2.5, 2, 0]} args={[0.3, 0.3, 5, 8]} rotation={[0, 0, Math.PI / 2]} color="#00aaff" />
-      
-      <Cylinder position={[10, 3, 0]} args={[4, 4, 6, 16]} color="#0066aa" />
-      <Cylinder position={[10, 6, 0]} args={[4, 4, 0.5, 16]} color="#00aaff" />
-      <Box position={[10, 7, 0]} args={[6, 4, 4]} color="#333333" />
-      <Box position={[-8, 1, 0]} args={[2, 2, 2]} color="#ffaa00" />
-      <Box position={[8, 1, 0]} args={[2, 2, 2]} color="#ffaa00" />
-    </group>
-  );
-}
+// ============================================
+// SEWAGE TREATMENT PLANT
+// ============================================
 
-function SolarEnergy() {
-  const panels = [];
-  for (let i = 0; i < 5; i++) {
-    for (let j = 0; j < 4; j++) {
-      panels.push({ position: [-25 + i * 6, 1, -15 + j * 6] });
+function SewageTreatmentPlant() {
+  const waterRef = useRef();
+  
+  useFrame((state) => {
+    // Animate water flow
+    if (waterRef.current) {
+      waterRef.current.position.z = (state.clock.elapsedTime * 1.5) % 10 - 5;
     }
-  }
+  });
+  
+  return (
+    <group position={[35, 0, 0]}>
+      {/* Circular treatment tanks */}
+      {[-8, -3, 3, 8].map((x) => (
+        <group key={x}>
+          <mesh position={[x, 2, 0]}>
+            <cylinderGeometry args={[3, 3, 4, 16]} />
+            <meshStandardMaterial color="#555555" />
+          </mesh>
+          <mesh position={[x, 3.8, 0]}>
+            <cylinderGeometry args={[2.5, 2.8, 0.5, 16]} />
+            <meshStandardMaterial color="#777777" />
+          </mesh>
+          {/* Water in tank */}
+          <mesh position={[x, 3.5, 0]}>
+            <cylinderGeometry args={[2.2, 2.4, 0.3, 16]} />
+            <meshStandardMaterial color="#44aaff" transparent opacity={0.7} />
+          </mesh>
+        </group>
+      ))}
+      
+      {/* Filtration units */}
+      {[-8, -3, 3, 8].map((x) => (
+        <mesh key={x} position={[x, 5, 0]}>
+          <boxGeometry args={[2, 2, 2]} />
+          <meshStandardMaterial color="#888888" />
+        </mesh>
+      ))}
+      
+      {/* Connecting pipes */}
+      <mesh position={[0, 2, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.3, 0.3, 16, 8]} />
+        <meshStandardMaterial color="#00aaff" />
+      </mesh>
+      
+      {/* Animated water particles */}
+      <group ref={waterRef}>
+        <mesh position={[-5, 2, 0]}>
+          <sphereGeometry args={[0.3, 8, 8]} />
+          <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={0.5} />
+        </mesh>
+      </group>
+      
+      {/* Water storage tank */}
+      <mesh position={[15, 3, 0]}>
+        <cylinderGeometry args={[4, 4, 6, 16]} />
+        <meshStandardMaterial color="#0066aa" />
+      </mesh>
+      <mesh position={[15, 6, 0]}>
+        <cylinderGeometry args={[4, 4, 0.5, 16]} />
+        <meshStandardMaterial color="#00aaff" />
+      </mesh>
+      
+      {/* Control building */}
+      <mesh position={[15, 8, 0]}>
+        <boxGeometry args={[6, 4, 4]} />
+        <meshStandardMaterial color="#333333" />
+      </mesh>
+      
+      {/* Pumps */}
+      <mesh position={[-10, 1, 0]}>
+        <boxGeometry args={[2, 2, 2]} />
+        <meshStandardMaterial color="#ffaa00" />
+      </mesh>
+      <mesh position={[12, 1, 0]}>
+        <boxGeometry args={[2, 2, 2]} />
+        <meshStandardMaterial color="#ffaa00" />
+      </mesh>
+    </group>
+  );
+}
+
+// ============================================
+// SOLAR ENERGY DISTRICT
+// ============================================
+
+function SolarEnergyDistrict() {
+  const energyRef = useRef();
+  
+  useFrame((state) => {
+    if (energyRef.current) {
+      energyRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 2 + 3;
+    }
+  });
+  
+  // Generate solar panel array
+  const panels = useMemo(() => {
+    const arr = [];
+    for (let i = 0; i < 6; i++) {
+      for (let j = 0; j < 5; j++) {
+        arr.push({
+          position: [-30 + i * 5, 1, -20 + j * 5],
+          rotation: [0.3, 0, 0]
+        });
+      }
+    }
+    return arr;
+  }, []);
   
   return (
     <group>
+      {/* Solar farm panels */}
       {panels.map((panel, index) => (
-        <group key={index} position={panel.position} rotation={[0.3, 0, 0]}>
-          <Box position={[0, 0, 0]} args={[4, 0.2, 3]} color="#003366" />
-          <Box position={[0, 0.1, 0]} args={[3.8, 0.1, 2.8]} color="#66aaff" transparent opacity={0.6} />
+        <group key={index} position={panel.position} rotation={panel.rotation}>
+          <mesh castShadow>
+            <boxGeometry args={[4, 0.3, 3]} />
+            <meshStandardMaterial color="#003366" metalness={0.8} roughness={0.2} />
+          </mesh>
+          <mesh position={[0, 0.15, 0]}>
+            <boxGeometry args={[3.8, 0.1, 2.8]} />
+            <meshStandardMaterial 
+              color="#66aaff" 
+              transparent 
+              opacity={0.7} 
+              emissive="#4488aa"
+              emissiveIntensity={0.3}
+            />
+          </mesh>
         </group>
       ))}
       
-      <Box position={[-28, 2, -18]} args={[4, 4, 2]} color="#444444" />
-      <Box position={[-28, 3.5, -18]} args={[3, 1, 1.5]} color="#ffaa00" />
-      <Cylinder position={[-28, 8, -18]} args={[0.5, 0.8, 12, 8]} color="#888888" />
-      <Box position={[-28, 14, -18]} args={[3, 2, 2]} color="#333333" />
-      <Sphere position={[-28, 5, -18]} args={[0.5, 8, 8]} color="#ffdd00" emissive="#ffaa00" emissiveIntensity={0.8} />
+      {/* Battery storage */}
+      <mesh position={[-33, 2, -23]}>
+        <boxGeometry args={[5, 4, 3]} />
+        <meshStandardMaterial color="#444444" />
+      </mesh>
+      <mesh position={[-33, 3.8, -23]}>
+        <boxGeometry args={[4, 1, 2]} />
+        <meshStandardMaterial color="#ffaa00" emissive="#ff8800" emissiveIntensity={0.5} />
+      </mesh>
+      
+      {/* Energy monitoring tower */}
+      <mesh position={[-33, 10, -23]}>
+        <cylinderGeometry args={[0.5, 0.8, 12, 8]} />
+        <meshStandardMaterial color="#888888" />
+      </mesh>
+      <mesh position={[-33, 16, -23]}>
+        <boxGeometry args={[4, 2, 2]} />
+        <meshStandardMaterial color="#333333" />
+      </mesh>
+      
+      {/* Animated energy indicator */}
+      <group ref={energyRef}>
+        <mesh position={[-33, 8, -23]}>
+          <sphereGeometry args={[0.5, 8, 8]} />
+          <meshStandardMaterial color="#ffdd00" emissive="#ffaa00" emissiveIntensity={0.8} />
+        </mesh>
+      </group>
+      
+      {/* Energy flow lines */}
+      {[0, 1, 2, 3].map((i) => (
+        <mesh key={i} position={[-30 + i * 2, 5 + i, -23]}>
+          <boxGeometry args={[3, 0.1, 0.1]} />
+          <meshStandardMaterial 
+            color="#ffaa00" 
+            transparent 
+            opacity={0.6 - i * 0.15}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }
 
-function WasteManagement() {
-  return (
-    <group position={[35, 0, -15]}>
-      <Box position={[0, 4, 0]} args={[10, 8, 8]} color="#667766" />
-      <Box position={[0, 8, 0]} args={[10, 0.3, 8]} color="#556655" />
-      <Box position={[8, 2, 0]} args={[4, 0.5, 2]} color="#888888" />
-      <Sphere position={[8, 2.5, 0]} args={[0.3, 8, 8]} color="#ffaa00" />
-      
-      <Box position={[-5, 1, 4]} args={[2, 2, 2]} color="#00aa44" />
-      <Box position={[-5, 1, 0]} args={[2, 2, 2]} color="#0088ff" />
-      <Box position={[-5, 1, -4]} args={[2, 2, 2]} color="#ffaa00" />
-      
-      {[0, 1, 2, 3, 4].map((i) => (
-        <group key={i} position={[-15 + i * 4, 0.5, 5]}>
-          <Box args={[2, 1, 1.5]} color="#334455" />
-          <Box position={[0, 1, 0]} args={[1.5, 0.5, 1]} color="#ff4444" />
-          <Sphere position={[0, 1.8, 0]} args={[0.15, 8, 8]} color={i % 2 === 0 ? '#00ff00' : '#ffff00'} />
-        </group>
-      ))}
-      
-      <Car position={[0, 0, 10]} direction={[1, 0, 0]} speed={0.04} color="#ff8800" />
-    </group>
-  );
-}
+// ============================================
+// AI TRAFFIC SYSTEM
+// ============================================
 
-function TrafficSystem() {
+function AITrafficSystem() {
   return (
     <group>
+      {/* Traffic lights at intersections */}
       <TrafficLight position={[2, 0, 2]} rotation={Math.PI / 4} />
       <TrafficLight position={[-2, 0, 2]} rotation={-Math.PI / 4} />
       <TrafficLight position={[2, 0, -2]} rotation={Math.PI / 4} />
       <TrafficLight position={[-2, 0, -2]} rotation={-Math.PI / 4} />
       
-      <Box position={[0, 8, 0]} args={[2, 1, 1]} color="#333333" />
-      <Cylinder position={[0, 8, 0.5]} args={[0.3, 0.3, 0.8, 8]} color="#666666" />
-      <Sphere position={[0, 8, 1]} args={[0.2, 8, 8]} color="#ff4444" emissive="#ff0000" emissiveIntensity={0.5} />
+      {/* Smart cameras */}
+      <mesh position={[0, 8, 0]}>
+        <boxGeometry args={[2, 1, 1]} />
+        <meshStandardMaterial color="#333333" />
+      </mesh>
+      <mesh position={[0, 8, 0.5]}>
+        <cylinderGeometry args={[0.3, 0.3, 0.8, 8]} />
+        <meshStandardMaterial color="#666666" />
+      </mesh>
+      <mesh position={[0, 8, 1]}>
+        <sphereGeometry args={[0.3, 8, 8]} />
+        <meshStandardMaterial color="#ff4444" emissive="#ff0000" emissiveIntensity={0.5} />
+      </mesh>
       
-      <Car position={[-40, 0, 0]} direction={[1, 0, 0]} speed={0.15} color="#ff4444" />
-      <Car position={[40, 0, 0]} direction={[-1, 0, 0]} speed={0.12} color="#44aaff" />
-      <Car position={[0, 0, -40]} direction={[0, 0, 1]} speed={0.13} color="#44ffaa" />
-      <Car position={[0, 0, 40]} direction={[0, 0, -1]} speed={0.11} color="#ff44aa" />
-      <Car position={[-20, 0, -20]} direction={[1, 0, 1]} speed={0.09} color="#ffaa44" />
-      <Car position={[20, 0, 20]} direction={[-1, 0, -1]} speed={0.10} color="#aa44ff" />
+      {/* Traffic sensors */}
+      <mesh position={[10, 1, 5]}>
+        <boxGeometry args={[1, 0.5, 0.5]} />
+        <meshStandardMaterial color="#0066aa" />
+      </mesh>
+      <mesh position={[-10, 1, -5]}>
+        <boxGeometry args={[1, 0.5, 0.5]} />
+        <meshStandardMaterial color="#0066aa" />
+      </mesh>
+      
+      {/* Animated cars */}
+      <Car position={[-60, 0, 0]} direction={[1, 0, 0]} speed={0.15} color="#ff4444" />
+      <Car position={[60, 0, 0]} direction={[-1, 0, 0]} speed={0.12} color="#44aaff" />
+      <Car position={[0, 0, -60]} direction={[0, 0, 1]} speed={0.13} color="#44ffaa" />
+      <Car position={[0, 0, 60]} direction={[0, 0, -1]} speed={0.11} color="#ff44aa" />
+      <Car position={[-30, 0, -30]} direction={[1, 0, 1]} speed={0.09} color="#ffaa44" />
+      <Car position={[30, 0, 30]} direction={[-1, 0, -1]} speed={0.10} color="#aa44ff" />
+      <Car position={[-30, 0, 30]} direction={[1, 0, -1]} speed={0.08} color="#44ff44" />
+      <Car position={[30, 0, -30]} direction={[-1, 0, 1]} speed={0.07} color="#ff44ff" />
     </group>
   );
 }
+
+// ============================================
+// SMART WASTE MANAGEMENT
+// ============================================
+
+function SmartWasteManagement() {
+  return (
+    <group position={[45, 0, -10]}>
+      {/* Recycling facility */}
+      <mesh position={[0, 4, 0]} castShadow>
+        <boxGeometry args={[12, 8, 8]} />
+        <meshStandardMaterial color="#667766" />
+      </mesh>
+      <mesh position={[0, 8, 0]}>
+        <boxGeometry args={[12, 0.3, 8]} />
+        <meshStandardMaterial color="#556655" />
+      </mesh>
+      
+      {/* Sorting equipment */}
+      <mesh position={[8, 2, 0]}>
+        <boxGeometry args={[5, 0.5, 2]} />
+        <meshStandardMaterial color="#888888" />
+      </mesh>
+      <mesh position={[8, 2.5, 0]}>
+        <sphereGeometry args={[0.4, 8, 8]} />
+        <meshStandardMaterial color="#ffaa00" />
+      </mesh>
+      
+      {/* Smart bins */}
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <group key={i} position={[-20 + i * 4, 0.5, 5]}>
+          <mesh castShadow>
+            <boxGeometry args={[2, 1.2, 1.5]} />
+            <meshStandardMaterial color="#334455" />
+          </mesh>
+          <mesh position={[0, 1.2, 0]}>
+            <boxGeometry args={[1.5, 0.5, 1]} />
+            <meshStandardMaterial color="#ff4444" />
+          </mesh>
+          {/* Sensor indicator */}
+          <mesh position={[0, 1.8, 0]}>
+            <sphereGeometry args={[0.15, 8, 8]} />
+            <meshStandardMaterial 
+              color={i % 2 === 0 ? '#00ff00' : '#ffff00'} 
+              emissive={i % 2 === 0 ? '#00ff00' : '#ffff00'} 
+              emissiveIntensity={0.5}
+            />
+          </mesh>
+        </group>
+      ))}
+      
+      {/* Waste collection truck */}
+      <Car position={[0, 0, 10]} direction={[1, 0, 0]} speed={0.04} color="#ff8800" />
+      
+      {/* Sort bins */}
+      <mesh position={[-5, 1, 4]}>
+        <boxGeometry args={[2, 2, 2]} />
+        <meshStandardMaterial color="#00aa44" />
+      </mesh>
+      <mesh position={[-5, 1, 0]}>
+        <boxGeometry args={[2, 2, 2]} />
+        <meshStandardMaterial color="#0088ff" />
+      </mesh>
+      <mesh position={[-5, 1, -4]}>
+        <boxGeometry args={[2, 2, 2]} />
+        <meshStandardMaterial color="#ffaa00" />
+      </mesh>
+    </group>
+  );
+}
+
+// ============================================
+// PUBLIC TRANSPORT
+// ============================================
 
 function PublicTransport() {
   return (
-    <group position={[0, 0, -20]}>
-      <Box position={[0, 2, 0]} args={[12, 4, 4]} color="#334455" />
-      <Box position={[0, 4, 0]} args={[12, 0.3, 4]} color="#445566" />
-      <Box position={[-4, 4, 2]} args={[3, 1.5, 0.2]} color="#222222" />
-      <Box position={[-4, 4, 2.1]} args={[2.8, 1.3, 0.1]} color="#00ff88" />
+    <group position={[0, 0, -25]}>
+      {/* Bus station */}
+      <mesh position={[0, 2, 0]} castShadow>
+        <boxGeometry args={[14, 4, 4]} />
+        <meshStandardMaterial color="#334455" />
+      </mesh>
+      <mesh position={[0, 4, 0]}>
+        <boxGeometry args={[14, 0.3, 4]} />
+        <meshStandardMaterial color="#445566" />
+      </mesh>
       
-      <Box position={[4, 1, 2]} args={[2, 2, 1]} color="#555555" />
-      <Box position={[4, 2, 2]} args={[1, 1, 0.5]} color="#00ff00" />
-      <Box position={[6, 1, 2]} args={[2, 2, 1]} color="#555555" />
-      <Box position={[6, 2, 2]} args={[1, 1, 0.5]} color="#00ff00" />
+      {/* Digital information board */}
+      <mesh position={[-4, 5, 2]}>
+        <boxGeometry args={[4, 2, 0.2]} />
+        <meshStandardMaterial color="#222222" />
+      </mesh>
+      <mesh position={[-4, 5, 2.1]}>
+        <boxGeometry args={[3.8, 1.8, 0.1]} />
+        <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.3} />
+      </mesh>
       
-      <Box position={[0, 0.05, 6]} args={[240, 0.1, 3]} color="#006633" />
+      {/* EV charging stations */}
+      {[4, 6, 8].map((x) => (
+        <group key={x}>
+          <mesh position={[x, 1, 2]}>
+            <boxGeometry args={[2, 2, 1]} />
+            <meshStandardMaterial color="#555555" />
+          </mesh>
+          <mesh position={[x, 2, 2]}>
+            <boxGeometry args={[1, 1, 0.5]} />
+            <meshStandardMaterial color="#00ff00" emissive="#00ff00" emissiveIntensity={0.5} />
+          </mesh>
+        </group>
+      ))}
       
-      <Bus position={[-40, 0, 6]} direction={[1, 0, 0]} speed={0.08} />
-      <Bus position={[40, 0, 6]} direction={[-1, 0, 0]} speed={0.06} />
+      {/* Bus lane */}
+      <mesh position={[0, 0.05, 6]}>
+        <boxGeometry args={[200, 0.1, 3]} />
+        <meshStandardMaterial color="#006633" />
+      </mesh>
+      
+      {/* Animated buses */}
+      <Bus position={[-50, 0, 6]} direction={[1, 0, 0]} speed={0.08} />
+      <Bus position={[50, 0, 6]} direction={[-1, 0, 0]} speed={0.06} />
+      
+      {/* Bus stop shelter */}
+      <mesh position={[0, 1, 5]}>
+        <boxGeometry args={[5, 2, 3]} />
+        <meshStandardMaterial color="#ffffff" transparent opacity={0.6} />
+      </mesh>
     </group>
   );
 }
 
-function School() {
+// ============================================
+// SMART SCHOOL
+// ============================================
+
+function SmartSchool() {
   return (
-    <group position={[20, 0, -10]}>
-      <Box position={[0, 4, 0]} args={[12, 8, 8]} color="#e8d8c8" />
-      <Box position={[0, 8, 0]} args={[12, 0.3, 8]} color="#d8c8b8" />
-      <Box position={[0, 8.2, 0]} args={[11, 0.3, 7]} color="#44aa33" />
+    <group position={[25, 0, -5]}>
+      {/* School building */}
+      <mesh position={[0, 4, 0]} castShadow>
+        <boxGeometry args={[14, 8, 8]} />
+        <meshStandardMaterial color="#e8d8c8" />
+      </mesh>
+      <mesh position={[0, 8, 0]}>
+        <boxGeometry args={[14, 0.3, 8]} />
+        <meshStandardMaterial color="#d8c8b8" />
+      </mesh>
       
-      <Box position={[3, 8.5, 2]} args={[4, 0.2, 3]} color="#003366" />
-      <Box position={[3, 8.5, 2]} args={[3.8, 0.1, 2.8]} color="#66aaff" transparent opacity={0.6} />
+      {/* Green roof */}
+      <mesh position={[0, 8.2, 0]}>
+        <boxGeometry args={[13, 0.3, 7]} />
+        <meshStandardMaterial color="#44aa33" />
+      </mesh>
       
-      <Box position={[0, 0.3, 6]} args={[8, 0.5, 4]} color="#ffaa55" />
-      <Cylinder position={[-2, 2, 6]} args={[0.2, 0.2, 4, 8]} color="#666666" />
-      <Sphere position={[-2, 4, 6]} args={[0.5, 8, 8]} color="#ff4444" />
+      {/* Solar panels */}
+      <mesh position={[4, 8.5, 2]}>
+        <boxGeometry args={[5, 0.2, 3]} />
+        <meshStandardMaterial color="#003366" />
+      </mesh>
+      <mesh position={[4, 8.6, 2]}>
+        <boxGeometry args={[4.8, 0.1, 2.8]} />
+        <meshStandardMaterial color="#66aaff" transparent opacity={0.6} />
+      </mesh>
       
-      <Box position={[0, 1, 4.5]} args={[4, 2, 0.5]} color="#ffffff" />
-      <Box position={[0, 0.2, 5]} args={[4, 0.4, 1]} color="#88ccff" />
+      {/* Playground */}
+      <mesh position={[0, 0.3, 6]}>
+        <boxGeometry args={[10, 0.5, 4]} />
+        <meshStandardMaterial color="#ffaa55" />
+      </mesh>
+      <mesh position={[-3, 2, 6]}>
+        <cylinderGeometry args={[0.2, 0.2, 4, 8]} />
+        <meshStandardMaterial color="#666666" />
+      </mesh>
+      <mesh position={[-3, 4, 6]}>
+        <sphereGeometry args={[0.6, 8, 8]} />
+        <meshStandardMaterial color="#ff4444" />
+      </mesh>
       
-      <Box position={[5, 5, 4.1]} args={[3, 2, 0.1]} color="#222222" />
-      <Box position={[5, 5, 4.15]} args={[2.8, 1.8, 0.05]} color="#44aaff" />
+      {/* Accessible entrance */}
+      <mesh position={[0, 1, 4.5]}>
+        <boxGeometry args={[5, 2, 0.5]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[0, 0.2, 5]}>
+        <boxGeometry args={[5, 0.4, 1]} />
+        <meshStandardMaterial color="#88ccff" />
+      </mesh>
       
-      <Tree position={[7, 0, 3]} scale={0.8} />
-      <Tree position={[-7, 0, 3]} scale={0.9} />
+      {/* Smart displays */}
+      <mesh position={[6, 5, 4.1]}>
+        <boxGeometry args={[4, 2, 0.1]} />
+        <meshStandardMaterial color="#222222" />
+      </mesh>
+      <mesh position={[6, 5, 4.15]}>
+        <boxGeometry args={[3.8, 1.8, 0.05]} />
+        <meshStandardMaterial color="#44aaff" emissive="#2266aa" emissiveIntensity={0.3} />
+      </mesh>
+      
+      {/* Landscaping */}
+      <Tree position={[9, 0, 3]} scale={0.8} />
+      <Tree position={[-9, 0, 3]} scale={0.9} />
     </group>
   );
 }
 
-function Park() {
+// ============================================
+// GREEN PARK
+// ============================================
+
+function GreenPark() {
   return (
-    <group position={[-15, 0, 10]}>
-      <Box position={[0, 0.1, 0]} args={[20, 0.2, 15]} color="#44aa33" />
-      <Box position={[0, 0.2, 0]} args={[2, 0.1, 15]} color="#cccccc" />
-      <Box position={[0, 0.2, 0]} args={[20, 0.1, 2]} color="#cccccc" />
+    <group position={[-20, 0, 5]}>
+      {/* Ground */}
+      <mesh position={[0, 0.1, 0]}>
+        <boxGeometry args={[25, 0.2, 20]} />
+        <meshStandardMaterial color="#44aa33" />
+      </mesh>
       
-      <Tree position={[-5, 0.5, -4]} scale={1.2} />
-      <Tree position={[6, 0.5, -5]} scale={1.0} />
-      <PineTree position={[-7, 0.5, 5]} scale={1.3} />
-      <PineTree position={[5, 0.5, 6]} scale={1.1} />
+      {/* Paths */}
+      <mesh position={[0, 0.2, 0]}>
+        <boxGeometry args={[2.5, 0.1, 20]} />
+        <meshStandardMaterial color="#cccccc" />
+      </mesh>
+      <mesh position={[0, 0.2, 0]}>
+        <boxGeometry args={[25, 0.1, 2.5]} />
+        <meshStandardMaterial color="#cccccc" />
+      </mesh>
       
-      <Box position={[4, 0.5, -2]} args={[4, 0.2, 4]} color="#ffaa55" />
-      <Cylinder position={[4, 2, -2]} args={[0.2, 0.2, 4, 8]} color="#666666" />
-      <Sphere position={[4, 4, -2]} args={[0.8, 8, 8]} color="#ff4444" />
+      {/* Trees */}
+      <Tree position={[-8, 0.5, -5]} scale={1.3} />
+      <Tree position={[8, 0.5, -6]} scale={1.1} />
+      <PineTree position={[-10, 0.5, 6]} scale={1.4} />
+      <PineTree position={[7, 0.5, 7]} scale={1.2} />
+      <Tree position={[0, 0.5, -8]} scale={1.0} />
+      <PineTree position={[-5, 0.5, 8]} scale={0.9} />
       
-      <Box position={[-3, 0.5, 0]} args={[2, 0.5, 1]} color="#8B4513" />
-      <Box position={[3, 0.5, 3]} args={[2, 0.5, 1]} color="#8B4513" />
+      {/* Playground */}
+      <mesh position={[5, 0.5, -3]}>
+        <boxGeometry args={[5, 0.2, 5]} />
+        <meshStandardMaterial color="#ffaa55" />
+      </mesh>
+      <mesh position={[5, 2, -3]}>
+        <cylinderGeometry args={[0.2, 0.2, 4, 8]} />
+        <meshStandardMaterial color="#666666" />
+      </mesh>
+      <mesh position={[5, 4, -3]}>
+        <sphereGeometry args={[0.8, 8, 8]} />
+        <meshStandardMaterial color="#ff4444" />
+      </mesh>
       
-      <Sphere position={[0, 0.3, 5]} args={[2, 16, 16]} color="#4488aa" transparent opacity={0.7} />
+      {/* Seating */}
+      <mesh position={[-4, 0.5, 0]}>
+        <boxGeometry args={[2.5, 0.5, 1]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+      <mesh position={[4, 0.5, 4]}>
+        <boxGeometry args={[2.5, 0.5, 1]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+      
+      {/* Pond */}
+      <mesh position={[0, 0.3, 6]}>
+        <cylinderGeometry args={[3, 3, 0.5, 16]} />
+        <meshStandardMaterial color="#4488aa" transparent opacity={0.8} />
+      </mesh>
     </group>
   );
 }
+
+// ============================================
+// ACCESSIBILITY ZONE
+// ============================================
 
 function AccessibilityZone() {
   return (
-    <group position={[10, 0, 5]}>
-      <Box position={[0, 3, 0]} args={[6, 6, 6]} color="#ccaa88" />
-      <Box position={[0, 6, 0]} args={[6, 0.3, 6]} color="#aa8866" />
-      <Box position={[0, 1, 3]} args={[4, 2, 0.5]} color="#ffffff" />
+    <group position={[12, 0, 6]}>
+      {/* Accessible building */}
+      <mesh position={[0, 3, 0]} castShadow>
+        <boxGeometry args={[7, 6, 7]} />
+        <meshStandardMaterial color="#ccaa88" />
+      </mesh>
+      <mesh position={[0, 6, 0]}>
+        <boxGeometry args={[7, 0.3, 7]} />
+        <meshStandardMaterial color="#aa8866" />
+      </mesh>
       
-      <Box position={[2, 0.3, 4]} args={[3, 0.6, 2]} color="#88ccff" />
-      <Box position={[2, 0.6, 3]} args={[3, 0.3, 1]} color="#88ccff" />
+      {/* Wide entrance */}
+      <mesh position={[0, 1, 3.5]}>
+        <boxGeometry args={[5, 2, 0.5]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
       
-      <Box position={[0, 0.15, 5]} args={[4, 0.1, 0.5]} color="#ffaa00" />
-      <Box position={[0, 0.15, 7]} args={[3, 0.1, 0.3]} color="#ffaa00" />
+      {/* Wheelchair ramp */}
+      <mesh position={[2.5, 0.3, 4.5]}>
+        <boxGeometry args={[3, 0.6, 2]} />
+        <meshStandardMaterial color="#88ccff" />
+      </mesh>
+      <mesh position={[2.5, 0.6, 3.5]}>
+        <boxGeometry args={[3, 0.3, 1]} />
+        <meshStandardMaterial color="#88ccff" />
+      </mesh>
       
-      <Box position={[2, 4, 3.1]} args={[2, 1, 0.1]} color="#ffffff" />
-      <Box position={[2, 4, 3.15]} args={[1.8, 0.8, 0.05]} color="#0000ff" />
+      {/* Tactile paving */}
+      <mesh position={[0, 0.15, 5.5]}>
+        <boxGeometry args={[5, 0.1, 0.6]} />
+        <meshStandardMaterial color="#ffaa00" />
+      </mesh>
       
-      <Box position={[-4, 0.5, 0]} args={[2, 0.5, 1]} color="#8B4513" />
-      <Box position={[3, 2, 0]} args={[2, 4, 2]} color="#888888" />
+      {/* Accessible crossing */}
+      <mesh position={[0, 0.15, 8]}>
+        <boxGeometry args={[4, 0.1, 0.4]} />
+        <meshStandardMaterial color="#ffaa00" />
+      </mesh>
       
-      <Box position={[-5, 0.15, 3]} args={[3, 0.1, 4]} color="#ffffff" />
+      {/* Signage */}
+      <mesh position={[2.5, 4, 3.6]}>
+        <boxGeometry args={[3, 1, 0.1]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[2.5, 4, 3.65]}>
+        <boxGeometry args={[2.8, 0.8, 0.05]} />
+        <meshStandardMaterial color="#0000ff" />
+      </mesh>
+      
+      {/* Accessible seating */}
+      <mesh position={[-5, 0.5, 0]}>
+        <boxGeometry args={[2.5, 0.5, 1]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+      <mesh position={[-5, 1, 0]}>
+        <boxGeometry args={[2.5, 0.5, 0.2]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+      
+      {/* Elevator */}
+      <mesh position={[4, 2, 0]}>
+        <boxGeometry args={[2.5, 4, 2.5]} />
+        <meshStandardMaterial color="#888888" />
+      </mesh>
+      <mesh position={[4, 2, 0.1]}>
+        <boxGeometry args={[2, 3, 0.1]} />
+        <meshStandardMaterial color="#88aaff" transparent opacity={0.7} />
+      </mesh>
+      
+      {/* Accessible parking */}
+      <mesh position={[-6, 0.15, 4]}>
+        <boxGeometry args={[3, 0.1, 5]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[-6, 0.15, 4]}>
+        <boxGeometry args={[3, 0.1, 0.3]} />
+        <meshStandardMaterial color="#88ccff" />
+      </mesh>
     </group>
   );
 }
 
-function Residential() {
+// ============================================
+// RESIDENTIAL DISTRICT
+// ============================================
+
+function ResidentialDistrict() {
   return (
-    <group position={[30, 0, 15]}>
-      {[0, 1, 2, 3].map((i) => (
-        <group key={i} position={[i * 8 - 12, 0, 0]}>
-          <Box position={[0, 8, 0]} args={[6, 16, 6]} color={i % 2 === 0 ? '#ccbbaa' : '#aabbcc'} />
-          <Box position={[0, 16, 0]} args={[6, 0.3, 6]} color="#998877" />
-          {[1, 3, 5, 7, 9, 11, 13, 15].map((y) => (
-            <Box key={y} position={[0, y, 3]} args={[4, 0.8, 0.1]} color="#88ccff" />
+    <group position={[40, 0, 20]}>
+      {/* Apartment buildings */}
+      {[0, 1, 2, 3, 4].map((i) => (
+        <group key={i} position={[i * 10 - 20, 0, 0]}>
+          <mesh position={[0, 10, 0]} castShadow>
+            <boxGeometry args={[8, 20, 8]} />
+            <meshStandardMaterial color={i % 2 === 0 ? '#c8b8a8' : '#a8b8c8'} />
+          </mesh>
+          
+          {/* Windows */}
+          {[2, 5, 8, 11, 14, 17].map((y) => (
+            <mesh key={y} position={[0, y, 4.01]}>
+              <boxGeometry args={[6, 0.8, 0.1]} />
+              <meshStandardMaterial color="#88ccff" emissive="#4488aa" emissiveIntensity={0.3} />
+            </mesh>
+          ))}
+          
+          {/* Balconies */}
+          {[3, 6, 9, 12, 15, 18].map((y) => (
+            <mesh key={y} position={[0, y, 4.5]}>
+              <boxGeometry args={[7, 0.3, 1]} />
+              <meshStandardMaterial color="#dddddd" />
+            </mesh>
           ))}
         </group>
       ))}
       
-      <Tree position={[-15, 0, -3]} scale={1.0} />
-      <Tree position={[15, 0, -3]} scale={1.1} />
-      <Tree position={[0, 0, -3]} scale={0.9} />
+      {/* Green spaces */}
+      <Tree position={[-25, 0, -4]} scale={1.2} />
+      <Tree position={[25, 0, -4]} scale={1.3} />
+      <Tree position={[0, 0, -4]} scale={1.1} />
       
-      <Box position={[0, 2, -5]} args={[10, 4, 4]} color="#ddccbb" />
+      {/* Streetlights */}
+      <SmartStreetlight position={[-25, 0, 4]} />
+      <SmartStreetlight position={[25, 0, 4]} />
     </group>
   );
 }
 
-function Commercial() {
-  return (
-    <group position={[-30, 0, 15]}>
-      <Box position={[0, 5, 0]} args={[5, 10, 5]} color="#88aacc" />
-      <Box position={[-8, 7, 0]} args={[4, 14, 4]} color="#88aacc" />
-      <Box position={[8, 6, 0]} args={[5, 12, 5]} color="#88aacc" />
-      
-      <Box position={[0, 3, -6]} args={[15, 6, 8]} color="#dddddd" />
-      <Box position={[0, 6, -6]} args={[15, 0.3, 8]} color="#cccccc" />
-      <Box position={[0, 2, -2]} args={[14, 3, 0.2]} color="#ffaa00" transparent opacity={0.5} />
-      
-      <Box position={[12, 3, -6]} args={[6, 6, 8]} color="#aaaacc" />
-      {[1, 3, 5].map((y) => (
-        <Box key={y} position={[12, y, -2]} args={[5, 0.2, 0.5]} color="#888899" />
-      ))}
-      
-      <Cylinder position={[-10, 3, 8]} args={[0.1, 0.15, 6, 8]} color="#555555" />
-      <Cylinder position={[10, 3, 8]} args={[0.1, 0.15, 6, 8]} color="#555555" />
-    </group>
-  );
-}
+// ============================================
+// COMMERCIAL DISTRICT
+// ============================================
 
-function Ambient() {
+function CommercialDistrict() {
   return (
-    <group>
-      <Box position={[0, -0.5, 0]} args={[200, 1, 200]} color="#1a1a2e" />
-      <Cylinder position={[15, 2, 20]} args={[5, 5, 4, 16]} color="#0066aa" />
-      <Cylinder position={[15, 4, 20]} args={[4.5, 5, 0.5, 16]} color="#00aaff" />
+    <group position={[-40, 0, 20]}>
+      {/* Office towers */}
+      <Skyscraper position={[0, 0, 0]} height={22} />
+      <GlassTower position={[-10, 0, 5]} height={18} />
+      <Skyscraper position={[10, 0, -5]} height={16} />
       
-      <Box position={[20, 1, 5]} args={[2, 2, 2]} color="#0066aa" />
-      <Box position={[-5, 5, -20]} args={[3, 3, 3]} color="#4488aa" />
-      <Box position={[-25, 3, -10]} args={[8, 6, 6]} color="#ff4444" />
+      {/* Shopping mall */}
+      <mesh position={[0, 4, -10]}>
+        <boxGeometry args={[18, 8, 10]} />
+        <meshStandardMaterial color="#dddddd" />
+      </mesh>
+      <mesh position={[0, 8, -10]}>
+        <boxGeometry args={[18, 0.3, 10]} />
+        <meshStandardMaterial color="#cccccc" />
+      </mesh>
       
-      <Box position={[0, 0.05, 30]} args={[100, 0.1, 2]} color="#44aa33" />
-      <Box position={[0, 0.05, -30]} args={[100, 0.1, 2]} color="#44aa33" />
-      <Box position={[30, 0.05, 0]} args={[2, 0.1, 100]} color="#44aa33" />
-      <Box position={[-30, 0.05, 0]} args={[2, 0.1, 100]} color="#44aa33" />
+      {/* Store fronts */}
+      <mesh position={[0, 2, -5]}>
+        <boxGeometry args={[17, 3, 0.2]} />
+        <meshStandardMaterial color="#ffaa00" transparent opacity={0.5} />
+      </mesh>
+      
+      {/* Parking garage */}
+      <mesh position={[14, 4, -10]}>
+        <boxGeometry args={[6, 8, 10]} />
+        <meshStandardMaterial color="#aaaacc" />
+      </mesh>
+      
+      {/* Smart streetlights */}
+      <SmartStreetlight position={[-15, 0, 10]} />
+      <SmartStreetlight position={[15, 0, 10]} />
     </group>
   );
 }
@@ -610,19 +1490,92 @@ function Ambient() {
 function Roads() {
   return (
     <group>
-      <Box position={[0, 0.05, 0]} args={[240, 0.1, 8]} color="#444444" />
-      <Box position={[0, 0.05, 0]} args={[8, 0.1, 240]} color="#444444" />
-      <Box position={[-40, 0.05, -40]} args={[4, 0.1, 120]} color="#444444" />
-      <Box position={[40, 0.05, -40]} args={[4, 0.1, 120]} color="#444444" />
-      <Box position={[-40, 0.05, 40]} args={[4, 0.1, 120]} color="#444444" />
-      <Box position={[40, 0.05, 40]} args={[4, 0.1, 120]} color="#444444" />
+      {/* Horizontal main road */}
+      <mesh position={[0, 0.05, 0]}>
+        <boxGeometry args={[200, 0.1, 8]} />
+        <meshStandardMaterial color="#444444" />
+      </mesh>
       
-      <Box position={[0, 0.06, 0]} args={[12, 0.02, 12]} color="#333333" />
+      {/* Vertical main road */}
+      <mesh position={[0, 0.05, 0]}>
+        <boxGeometry args={[8, 0.1, 200]} />
+        <meshStandardMaterial color="#444444" />
+      </mesh>
       
-      <Box position={[0, 0.03, 4.5]} args={[240, 0.1, 1]} color="#555555" />
-      <Box position={[0, 0.03, -4.5]} args={[240, 0.1, 1]} color="#555555" />
-      <Box position={[4.5, 0.03, 0]} args={[1, 0.1, 240]} color="#555555" />
-      <Box position={[-4.5, 0.03, 0]} args={[1, 0.1, 240]} color="#555555" />
+      {/* Secondary roads */}
+      <mesh position={[-40, 0.05, -40]}>
+        <boxGeometry args={[4, 0.1, 120]} />
+        <meshStandardMaterial color="#444444" />
+      </mesh>
+      <mesh position={[40, 0.05, -40]}>
+        <boxGeometry args={[4, 0.1, 120]} />
+        <meshStandardMaterial color="#444444" />
+      </mesh>
+      <mesh position={[-40, 0.05, 40]}>
+        <boxGeometry args={[4, 0.1, 120]} />
+        <meshStandardMaterial color="#444444" />
+      </mesh>
+      <mesh position={[40, 0.05, 40]}>
+        <boxGeometry args={[4, 0.1, 120]} />
+        <meshStandardMaterial color="#444444" />
+      </mesh>
+      
+      {/* Road markings */}
+      <mesh position={[0, 0.07, 0]}>
+        <boxGeometry args={[200, 0.02, 0.2]} />
+        <meshStandardMaterial color="#ffffff" opacity={0.8} transparent />
+      </mesh>
+      <mesh position={[0, 0.07, 0]}>
+        <boxGeometry args={[0.2, 0.02, 200]} />
+        <meshStandardMaterial color="#ffffff" opacity={0.8} transparent />
+      </mesh>
+      
+      {/* Sidewalks */}
+      <mesh position={[0, 0.03, 4.5]}>
+        <boxGeometry args={[200, 0.1, 1]} />
+        <meshStandardMaterial color="#555555" />
+      </mesh>
+      <mesh position={[0, 0.03, -4.5]}>
+        <boxGeometry args={[200, 0.1, 1]} />
+        <meshStandardMaterial color="#555555" />
+      </mesh>
+      
+      {/* Pedestrian crossings */}
+      {[-20, 0, 20].map((x) => (
+        <group key={x}>
+          {[-1.5, -0.5, 0.5, 1.5].map((z) => (
+            <mesh key={z} position={[x, 0.07, z]}>
+              <boxGeometry args={[0.5, 0.02, 1]} />
+              <meshStandardMaterial color="#ffffff" />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// ============================================
+// GROUND & AMBIENT
+// ============================================
+
+function Ground() {
+  return (
+    <group>
+      <mesh position={[0, -0.5, 0]} receiveShadow>
+        <boxGeometry args={[300, 1, 300]} />
+        <meshStandardMaterial color="#1a1a2e" roughness={0.9} />
+      </mesh>
+      
+      {/* Green areas */}
+      <mesh position={[0, 0.05, 35]}>
+        <boxGeometry args={[100, 0.1, 3]} />
+        <meshStandardMaterial color="#44aa33" />
+      </mesh>
+      <mesh position={[0, 0.05, -35]}>
+        <boxGeometry args={[100, 0.1, 3]} />
+        <meshStandardMaterial color="#44aa33" />
+      </mesh>
     </group>
   );
 }
@@ -652,9 +1605,10 @@ function CameraRig({ target }) {
 function CityScene({ selectedFacility }) {
   return (
     <Canvas
-      camera={{ position: [80, 60, 80], fov: 60 }}
+      camera={{ position: [100, 80, 100], fov: 60 }}
       shadows
       dpr={[1, 2]}
+      style={{ width: '100%', height: '100%' }}
     >
       <color attach="background" args={['#0a0e1a']} />
       
@@ -667,31 +1621,45 @@ function CityScene({ selectedFacility }) {
         shadow-mapSize-height={2048}
       />
       <pointLight position={[0, 30, 0]} intensity={0.5} color="#00aaff" />
+      <hemisphereLight args={['#4477aa', '#224422', 0.6]} />
       
       <Stars radius={100} depth={50} count={2000} factor={4} fade speed={1} />
       <Sky distance={450000} sunPosition={[100, 50, 100]} />
       
+      <Ground />
       <Roads />
-      <Ambient />
       
-      <AI_ControlCenter />
-      <Hospital />
+      <AIControlCenter />
+      <SmartHospital />
       <VerticalFarm />
-      <SewageTreatment />
-      <SolarEnergy />
-      <WasteManagement />
-      <TrafficSystem />
+      <SewageTreatmentPlant />
+      <SolarEnergyDistrict />
+      <AITrafficSystem />
+      <SmartWasteManagement />
       <PublicTransport />
-      <School />
-      <Park />
+      <SmartSchool />
+      <GreenPark />
       <AccessibilityZone />
-      <Residential />
-      <Commercial />
+      <ResidentialDistrict />
+      <CommercialDistrict />
       
-      <Tree position={[-40, 0.5, 40]} scale={0.8} />
-      <PineTree position={[40, 0.5, 40]} scale={1.2} />
+      {/* Trees throughout the city */}
+      <Tree position={[-40, 0.5, 40]} scale={0.9} />
+      <PineTree position={[40, 0.5, 40]} scale={1.1} />
       <Tree position={[-40, 0.5, -40]} scale={1.0} />
-      <PineTree position={[40, 0.5, -40]} scale={0.9} />
+      <PineTree position={[40, 0.5, -40]} scale={0.8} />
+      <Tree position={[-20, 0.5, -20]} scale={0.7} />
+      <PineTree position={[20, 0.5, -20]} scale={0.9} />
+      <Tree position={[-20, 0.5, 20]} scale={1.2} />
+      <PineTree position={[20, 0.5, 20]} scale={0.6} />
+      
+      {/* Smart streetlights */}
+      <SmartStreetlight position={[8, 0, 5]} />
+      <SmartStreetlight position={[-8, 0, -5]} />
+      <SmartStreetlight position={[8, 0, -5]} />
+      <SmartStreetlight position={[-8, 0, 5]} />
+      <SmartStreetlight position={[20, 0, 10]} />
+      <SmartStreetlight position={[-20, 0, 10]} />
       
       <CameraRig target={selectedFacility} />
       
@@ -700,7 +1668,8 @@ function CityScene({ selectedFacility }) {
         dampingFactor={0.05}
         maxPolarAngle={Math.PI / 2.2}
         minDistance={10}
-        maxDistance={200}
+        maxDistance={300}
+        target={[0, 10, 0]}
       />
     </Canvas>
   );
@@ -726,7 +1695,8 @@ function Dashboard() {
       setCityStatus(prev => ({
         ...prev,
         energy: Math.random() > 0.1 ? 'RENEWABLE' : 'STORAGE',
-        traffic: Math.random() > 0.05 ? 'AI OPTIMIZED' : 'MONITORING'
+        traffic: Math.random() > 0.05 ? 'AI OPTIMIZED' : 'MONITORING',
+        water: Math.random() > 0.15 ? 'RECYCLING ACTIVE' : 'PURIFYING'
       }));
     }, 3000);
     
@@ -738,7 +1708,7 @@ function Dashboard() {
       position: 'fixed',
       top: '20px',
       right: '20px',
-      width: '320px',
+      width: '350px',
       background: 'rgba(15, 23, 42, 0.85)',
       backdropFilter: 'blur(12px)',
       borderRadius: '12px',
@@ -770,6 +1740,15 @@ function Dashboard() {
           <span style={{ fontSize: '13px', fontWeight: '600', color: '#4ade80' }}>{value}</span>
         </div>
       ))}
+      
+      <div style={{ marginTop: '12px', padding: '8px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '8px' }}>
+        <div style={{ fontSize: '12px', color: '#38bdf8', marginBottom: '4px' }}>
+          AI SYSTEM ACTIVE
+        </div>
+        <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+          Monitoring all city systems in real-time
+        </div>
+      </div>
     </div>
   );
 }
@@ -827,7 +1806,7 @@ function InfoPanel({ facilityId, onClose }) {
       left: '20px',
       top: '50%',
       transform: 'translateY(-50%)',
-      width: '340px',
+      width: '380px',
       background: 'rgba(15, 23, 42, 0.9)',
       backdropFilter: 'blur(12px)',
       borderRadius: '12px',
@@ -851,7 +1830,8 @@ function InfoPanel({ facilityId, onClose }) {
           width: '30px',
           height: '30px',
           borderRadius: '50%',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          transition: 'all 0.3s'
         }}
       >
         ×
@@ -887,6 +1867,18 @@ function InfoPanel({ facilityId, onClose }) {
           {info.technology}
         </div>
       </div>
+      
+      <div style={{
+        marginTop: '16px',
+        padding: '12px',
+        background: 'rgba(74, 222, 128, 0.1)',
+        borderRadius: '8px',
+        border: '1px solid rgba(74, 222, 128, 0.3)'
+      }}>
+        <div style={{ fontSize: '12px', color: '#4ade80', fontWeight: '600' }}>
+          STATUS: {info.status}
+        </div>
+      </div>
     </div>
   );
 }
@@ -905,7 +1897,7 @@ export default function App() {
   };
   
   return (
-    <div style={{ width: '100%', height: '100vh' }}>
+    <div style={{ width: '100%', height: '100vh', background: '#0a0e1a' }}>
       <CityScene selectedFacility={selectedFacility} />
       
       <Dashboard />
@@ -928,12 +1920,27 @@ export default function App() {
         left: '20px',
         zIndex: 1000,
         background: 'rgba(15, 23, 42, 0.8)',
-        padding: '12px 20px',
-        borderRadius: '8px',
-        border: '1px solid rgba(56, 189, 248, 0.3)'
+        padding: '16px 24px',
+        borderRadius: '12px',
+        border: '1px solid rgba(56, 189, 248, 0.3)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
       }}>
-        <h1 style={{ fontSize: '24px', color: '#38bdf8', margin: 0 }}>BSS WORLD</h1>
-        <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0' }}>Smart Sustainable City</p>
+        <h1 style={{ fontSize: '28px', color: '#38bdf8', margin: 0, fontWeight: '800' }}>
+          BSS WORLD
+        </h1>
+        <p style={{ fontSize: '14px', color: '#94a3b8', margin: '4px 0 0' }}>
+          Smart Sustainable City
+        </p>
+        <div style={{
+          marginTop: '8px',
+          padding: '4px 8px',
+          background: 'rgba(74, 222, 128, 0.1)',
+          borderRadius: '4px',
+          fontSize: '12px',
+          color: '#4ade80'
+        }}>
+          ● ALL SYSTEMS OPERATIONAL
+        </div>
       </div>
     </div>
   );
